@@ -73,7 +73,7 @@ def match_shows(user_shows, available_shows, threshold=80):
     return True, matched_shows
 
 
-def get_embedding_vectors_and_calc_average_vector(tv_shows):
+def get_embedding_vectors_and_calc_average_vector(tv_shows,embeddings):
     """
     Load embedding vectors from the pickle file for the given TV show titles.
     Calculate the average embedding vector for the given TV show titles.
@@ -86,7 +86,7 @@ def get_embedding_vectors_and_calc_average_vector(tv_shows):
                     Returns None if no valid embeddings are found.
     """
     # Load embeddings from the pickle file
-    embeddings = load_embeddings_from_pickle(PICKLE_FILE)
+    # embeddings = load_embeddings_from_pickle(PICKLE_FILE)
 
     # Collect the embedding vectors for the given titles
     vectors = []
@@ -104,8 +104,7 @@ def get_embedding_vectors_and_calc_average_vector(tv_shows):
     # Convert to a NumPy array and calculate the average vector
     average_vector = np.mean(np.array(vectors), axis=0)
 
-    return average_vector        
-
+    return average_vector    
 
 
 def main():
@@ -157,7 +156,8 @@ def main():
         
         print("Sorry about that. Let's try again, please make sure to write the names of the TV shows correctly.")
 
-    average_vector= get_embedding_vectors_and_calc_average_vector(matched_shows)
+    average_vector= get_embedding_vectors_and_calc_average_vector(matched_shows,embeddings)
+
     if average_vector is not None:
         print(f"Average vector calculated with shape: {average_vector}")
     else:
