@@ -122,20 +122,22 @@ def find_similar_shows(embeddings, average_vector, input_shows):
         input_shows (list): List of shows provided by the user.
 
     Returns:
-        list: Titles of the 5 most similar shows.
+        list: List of tuples containing titles and similarity percentages of the 5 most similar shows.
     """
     similarities = []
     
     for title, vector in embeddings.items():
         if title not in input_shows:  # Exclude input shows
             similarity = cosine_similarity(average_vector, vector)
-            similarities.append((title, similarity))
+            percentage = (similarity + 1) * 50  # Convert similarity (-1 to 1) to percentage (0 to 100)
+            similarities.append((title, percentage))
     
-    # Sort by similarity in descending order and select top 5
+    # Sort by similarity percentage in descending order and select top 5
     similarities.sort(key=lambda x: x[1], reverse=True)
-    top_5_shows = [title for title, _ in similarities[:5]]
+    top_5_shows = similarities[:5]
     
     return top_5_shows
+
 
 
 
@@ -190,18 +192,15 @@ def main():
 
     average_vector= get_embedding_vectors_and_calc_average_vector(matched_shows,embeddings)
 
-    if average_vector is not None:
-        print(f"Average vector calculated with shape: {average_vector}")
+    if average_vector is None:
+        print("Error: Unable to calculate average vector.")
+        return
 
-    else:
-        print("Failed to calculate the average vector.")
-        exit
+    similar_shows= find_similar_shows(embeddings, average_vector, matched_shows)    
+    print("\nHere are the tv shows that I think you would love:")
+    for title, percentage in similar_shows:
+        print(f"{title}: {int(round(percentage))}% ")
 
-    top_5_shows= find_similar_shows(embeddings, average_vector, matched_shows)    
-    print(top_5_shows)
-
-
-        
 
 if __name__ == "__main__":
     main()
