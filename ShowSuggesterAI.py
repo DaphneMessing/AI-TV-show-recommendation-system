@@ -1,4 +1,3 @@
-
 from dotenv import load_dotenv
 from openai import OpenAI
 from openai.types import CreateEmbeddingResponse
@@ -7,6 +6,8 @@ import pickle
 import os
 from thefuzz import process
 import numpy as np
+from usearch.index import Index
+
 
 # Load API key from .env file
 load_dotenv()
@@ -138,6 +139,64 @@ def find_similar_shows(embeddings, average_vector, input_shows):
     
     return top_5_shows
 
+def build_index(embeddings):
+    """
+    Build a `usearch` index for fast similarity search.
+
+    Args:
+        embeddings (dict): Dictionary of {title: vector}.
+
+    Returns:
+        index: A `usearch` index populated with the embeddings.
+        mapping: A dictionary mapping integer IDs to show titles.
+    """
+    from usearch.index import Index
+
+    vector_dim = len(next(iter(embeddings.values())))  # Get the vector dimension
+    index = Index(ndim=vector_dim)  # Create the `usearch` index
+    mapping = {}  # Map integer IDs to titles
+
+    for idx, (title, vector) in enumerate(embeddings.items()):
+        # Ensure the vector is a NumPy array
+        vector = np.array(vector, dtype=np.float32)
+        index.add(idx, vector)  # Add vector to the index
+        mapping[idx] = title
+
+    return index, mapping
+
+
+def find_similar_shows_fast(embeddings, average_vector, input_shows, k=5):
+    """
+    Find the 5 most similar shows to the given average vector using `usearch`.
+
+    Args:
+        embeddings (dict): Dictionary of {title: vector}.
+        average_vector (np.ndarray): The average vector to compare against.
+        input_shows (list): List of shows provided by the user.
+        k (int): Number of similar shows to return.
+
+    Returns:
+        list: List of tuples containing titles and similarity percentages of the most similar shows.
+    """
+    index, mapping = build_index(embeddings)
+
+    # Search for top `k + len(input_shows)` similar vectors
+    matches = index.search(average_vector, k + len(input_shows))
+
+    # Filter out input shows and calculate percentages
+    results = []
+    for match in matches:
+        title = mapping[match.key]
+        if title not in input_shows:
+            similarity_percentage = (1 - match.distance) * 100  # Convert distance to similarity percentage
+            results.append((title, int(round(similarity_percentage))))
+
+            # Stop after collecting `k` results
+            if len(results) == k:
+                break
+
+    return results
+
 
 
 
@@ -196,7 +255,7 @@ def main():
         print("Error: Unable to calculate average vector.")
         return
 
-    similar_shows= find_similar_shows(embeddings, average_vector, matched_shows)    
+    similar_shows= find_similar_shows_fast(embeddings, average_vector, matched_shows)    
     print("\nHere are the tv shows that I think you would love:")
     for title, percentage in similar_shows:
         print(f"{title}: {int(round(percentage))}% ")
