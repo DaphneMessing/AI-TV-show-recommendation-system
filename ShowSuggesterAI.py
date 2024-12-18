@@ -6,6 +6,7 @@ import pandas as pd
 import pickle
 import os
 from thefuzz import process
+import numpy as np
 
 # Load API key from .env file
 load_dotenv()
@@ -71,6 +72,42 @@ def match_shows(user_shows, available_shows, threshold=80):
         
     return True, matched_shows
 
+
+def get_embedding_vectors_and_calc_average_vector(tv_shows):
+    """
+    Load embedding vectors from the pickle file for the given TV show titles.
+    Calculate the average embedding vector for the given TV show titles.
+
+    Args:
+        tv_shows (list): List of the matched TV shows as strings. 
+
+    Returns:
+        np.ndarray: The average embedding vector as a NumPy array.
+                    Returns None if no valid embeddings are found.
+    """
+    # Load embeddings from the pickle file
+    embeddings = load_embeddings_from_pickle(PICKLE_FILE)
+
+    # Collect the embedding vectors for the given titles
+    vectors = []
+    for title in tv_shows:
+        if title in embeddings:
+            vectors.append(embeddings[title])
+        else:
+            print(f"Warning: No embedding found for '{title}'. Skipping.")
+
+    # Check if any vectors were retrieved
+    if not vectors:
+        print("No valid embedding vectors found for the given titles.")
+        return None
+
+    # Convert to a NumPy array and calculate the average vector
+    average_vector = np.mean(np.array(vectors), axis=0)
+
+    return average_vector        
+
+
+
 def main():
         
     # Check if embeddings pickle file exists
@@ -96,6 +133,7 @@ def main():
      # Load TV show data from CSV
     data = pd.read_csv(CSV_FILE)
     available_shows = data["Title"].tolist()  # List of available TV show titles
+    matched_shows=[]
 
     while True:
         # Prompt user for input
@@ -118,6 +156,13 @@ def main():
                 break
         
         print("Sorry about that. Let's try again, please make sure to write the names of the TV shows correctly.")
+
+    average_vector= get_embedding_vectors_and_calc_average_vector(matched_shows)
+    if average_vector is not None:
+        print(f"Average vector calculated with shape: {average_vector}")
+    else:
+        print("Failed to calculate the average vector.")
+
         
 
 if __name__ == "__main__":
