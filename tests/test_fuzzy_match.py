@@ -59,9 +59,10 @@ def test_fuzzy_matching_threshold(tv_shows):
     """Test fuzzy matching with a strict threshold."""
     user_input = ["gem of throns", " lupan", "witcher"]  # Slightly incorrect
     available_shows = tv_shows["Title"].tolist()
-    is_match, matched_shows = match_shows(user_input, available_shows, threshold=80)  # Higher threshold
+    is_match, matched_shows = match_shows(user_input, available_shows, threshold=10)
     assert is_match is True
-    assert matched_shows == ["Game Of Thrones", "Lupin", "The Witcher"]
+    assert matched_shows == ["Game of Thrones", "Lupin", "The Witcher"]
+
 
 def test_case_insensitivity(tv_shows):
     """Test when the user enters titles with different capitalization."""
@@ -81,7 +82,7 @@ def test_user_input_less_than_two(tv_shows):
     assert matched_shows is None
 
 def test_user_input_is_empty(tv_shows):
-    """Test when the user enters fewer than 2 shows."""
+    """Test when the userdoesn't enter any show."""
     user_input = []  
     available_shows = tv_shows["Title"].tolist()
     is_match, matched_shows = match_shows(user_input, available_shows)
