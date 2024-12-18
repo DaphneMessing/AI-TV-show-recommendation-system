@@ -107,6 +107,38 @@ def get_embedding_vectors_and_calc_average_vector(tv_shows,embeddings):
     return average_vector    
 
 
+def cosine_similarity(a, b):
+    """Calculate the cosine similarity between two vectors."""
+    return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+
+
+def find_similar_shows(embeddings, average_vector, input_shows):
+    """
+    Find the 5 most similar shows to the given average vector, excluding input shows.
+
+    Args:
+        embeddings (dict): Dictionary of {title: vector}.
+        average_vector (np.ndarray): The average vector to compare against.
+        input_shows (list): List of shows provided by the user.
+
+    Returns:
+        list: Titles of the 5 most similar shows.
+    """
+    similarities = []
+    
+    for title, vector in embeddings.items():
+        if title not in input_shows:  # Exclude input shows
+            similarity = cosine_similarity(average_vector, vector)
+            similarities.append((title, similarity))
+    
+    # Sort by similarity in descending order and select top 5
+    similarities.sort(key=lambda x: x[1], reverse=True)
+    top_5_shows = [title for title, _ in similarities[:5]]
+    
+    return top_5_shows
+
+
+
 def main():
         
     # Check if embeddings pickle file exists
@@ -160,8 +192,14 @@ def main():
 
     if average_vector is not None:
         print(f"Average vector calculated with shape: {average_vector}")
+
     else:
         print("Failed to calculate the average vector.")
+        exit
+
+    top_5_shows= find_similar_shows(embeddings, average_vector, matched_shows)    
+    print(top_5_shows)
+
 
         
 
