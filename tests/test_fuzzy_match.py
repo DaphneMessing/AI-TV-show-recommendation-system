@@ -30,6 +30,15 @@ def test_match_shows_partial_match(tv_shows):
     assert is_match is False
     assert matched_shows is None
 
+def test_match_shows_partial_match_more_than_2(tv_shows):
+    """Test when some user shows don't match data from the CSV file, but still more than 2 are matching"""
+    user_input = ["Breaking Bad", "Nonexistent Show1", "Nonexistent Show2", "Game of Thrones"]  # Mix of valid and invalid
+    available_shows = tv_shows["Title"].tolist()
+    is_match, matched_shows = match_shows(user_input, available_shows)
+    assert is_match is True
+    assert matched_shows == ["Breaking Bad", "Game of Thrones"]
+
+
 def test_user_input_with_duplicates(tv_shows):
     """Test when the user enters the same show multiple times."""
     user_input = ["Breaking Bad", "Breaking Bad", "Game of Thrones"]  # Duplicate entries
@@ -88,8 +97,3 @@ def test_user_input_is_empty(tv_shows):
     is_match, matched_shows = match_shows(user_input, available_shows)
     assert is_match is False
     assert matched_shows is None
-
-
-
-
-

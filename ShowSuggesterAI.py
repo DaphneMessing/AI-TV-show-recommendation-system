@@ -64,8 +64,6 @@ def match_shows(user_shows, available_shows, threshold=80):
         if score >= threshold :
             if match not in matched_shows:
                 matched_shows.append(match)
-        else:
-            return False, None
         
     # Check if fewer than 2 matches were found
     if len(matched_shows) < 2:
@@ -111,15 +109,15 @@ def main():
 
         # Match shows using fuzzy matching
         is_match, matched_shows = match_shows(user_shows, available_shows)
+        
         if is_match:
-            if len(matched_shows)<2:
-                print("Please enter more than 1 show.")
-            else:    
-                print(f"Matched shows: {matched_shows}")
-                print("All shows matched successfully!")
+            res= ', '.join(matched_shows)
+            user_input=input(f"Making sure, do you mean {res}?(y/n)")
+            if user_input == "y":
+                print("Great! Generating recommendations now…")
                 break
-        else:
-            print("Sorry about that. Let's try again, please make sure to write the names of the TV shows correctly.")
+        
+        print("Sorry about that. Let's try again, please make sure to write the names of the TV shows correctly.")
         
 
 if __name__ == "__main__":
