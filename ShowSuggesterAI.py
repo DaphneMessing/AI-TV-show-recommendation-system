@@ -301,17 +301,20 @@ def generate_new_shows(matched_shows, similar_shows, data):
     
     
 
-def generate_lightx_image(prompt, api_key):
+def generate_lightx_image(title, description, api_key):
     """
     Generate an image using the LightX image generator API.
 
     Args:
-        prompt (str): The text prompt to describe the image.
+        title (str): The name of the generated tv show.
+        description (str): The description of the generated tv show.
         api_key (str): The API key for authentication.
 
     Returns:
         The URL of the generated image.
     """
+    prompt= f"Create a captivating TV show advertisement poster for a show named '{title}'. The show is about {description}. The poster should be visually striking, appealing, and reflective of the show's theme"
+
     # Step 1: Create an order with the prompt
     url = 'https://api.lightxeditor.com/external/api/v1/text2image'
     headers = {
@@ -476,8 +479,8 @@ def main():
         print("Here are also the 2 tv show ads. Hope you like them!")
 
         try:
-            generated_url1 = generate_lightx_image(show1['description'], LIGHTX_API_KEY)
-            generated_url2 = generate_lightx_image(show2['description'], LIGHTX_API_KEY)
+            generated_url1 = generate_lightx_image(show1['name'], show1['description'], LIGHTX_API_KEY)
+            generated_url2 = generate_lightx_image(show2['name'], show2['description'], LIGHTX_API_KEY)
             file_name1 = save_image_from_url(generated_url1, show1['name'])
             file_name2 = save_image_from_url(generated_url2, show2['name'])
             display_image(file_name1)
