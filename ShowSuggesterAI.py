@@ -28,13 +28,21 @@ CSV_FILE = "imdb_tvshows.csv"
 PICKLE_FILE = "tvshow_embeddings.pkl"
 
 
-def generate_embeddings(descriptions, model="text-embedding-ada-002"):
-    """Generate embeddings for a list of descriptions."""
+def generate_embeddings(genres_with_descriptions, model="text-embedding-ada-002"):
+    """Generate embeddings for a list of genres concatenated with  descriptions .
+
+    Args:
+        genres_with_descriptions (dict): Dictionary where the key is the title,
+                                         and the value is the concatenated genres and description.
+        model (str): OpenAI model to use for embeddings.
+
+        dict: Dictionary where the key is the title and the value is the embedding vector.
+    """
     embeddings = {}
-    for title, description in descriptions.items():
+    for title, genre_with_description in genres_with_descriptions.items():
         try:
             response: CreateEmbeddingResponse = client.embeddings.create(
-                input=description,
+                input=genre_with_description,
                 model=model
             )
             embeddings[title] = response.data[0].embedding
@@ -400,10 +408,15 @@ def main():
         print("Generating embeddings from CSV file...")
         # Load TV show descriptions from CSV
         data = pd.read_csv(CSV_FILE)
-        descriptions = dict(zip(data["Title"], data["Description"]))
+        genres_with_descriptions = dict(
+            zip(
+                data["Title"],
+                data["Genres"]+ ". " +data["Description"]
+                )
+            )
         
         # Generate embeddings
-        embeddings = generate_embeddings(descriptions)
+        embeddings = generate_embeddings(genres_with_descriptions)
         
         # Save embeddings to a pickle file
         save_embeddings_to_pickle(embeddings, PICKLE_FILE)
