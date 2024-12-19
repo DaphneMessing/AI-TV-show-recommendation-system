@@ -8,6 +8,9 @@ from thefuzz import process
 import numpy as np
 from usearch.index import Index
 import json
+import requests
+from PIL import Image
+import time
 
 
 
@@ -224,9 +227,6 @@ def generate_new_shows(matched_shows, similar_shows, data):
         f"{row['Title']}: {row['Description']}" for _, row in data.iterrows() if row['Title'] in [s[0] for s in similar_shows]
     ]
 
-    print(f"matched desc:{matched_descriptions}\n")
-    print(f"similar desc:{similar_descriptions}")
-
     # Add examples for clarity
     examples = """
     Examples:
@@ -275,11 +275,9 @@ def generate_new_shows(matched_shows, similar_shows, data):
 
         # Parse the JSON response
         response_content = completion.choices[0].message.content  # Correctly access the `content` attribute
-        print(f"response before cleaning:\n{response_content}")
 
         # Remove the backticks and clean the response
         response_content = response_content.strip("```json").strip("```").strip()
-        print(f"response after cleaning:\n{response_content}")
 
         # Parse JSON content
         response_json = json.loads(response_content)  # Parse JSON content
@@ -292,7 +290,105 @@ def generate_new_shows(matched_shows, similar_shows, data):
     except Exception as e:
         print("Error calling OpenAI API:", e)
         return None, None
+    
+    
 
+def generate_lightx_image(prompt, api_key):
+    """
+    Generate an image using the LightX image generator API.
+
+    Args:
+        prompt (str): The text prompt to describe the image.
+        api_key (str): The API key for authentication.
+
+    Returns:
+        The URL of the generated image.
+    """
+    # Step 1: Create an order with the prompt
+    url = 'https://api.lightxeditor.com/external/api/v1/text2image'
+    headers = {
+        'Content-Type': 'application/json',
+        'x-api-key': api_key
+    }
+    data = {
+        "textPrompt": prompt
+    }
+
+    response = requests.post(url, headers=headers, json=data)
+    if response.status_code != 200:
+        print(f"Image generation request failed: {response.text}")
+        return None
+
+    response_json = response.json()
+    order_id = response_json['body']['orderId']
+
+    # Step 2: Poll the API for the status and retrieve the image URL
+    status_url = 'https://api.lightxeditor.com/external/api/v1/order-status'
+    for _ in range(5):  # Retry up to 5 times
+        time.sleep(3)  # Wait 3 seconds between retries
+        status_payload = {"orderId": order_id}
+        status_response = requests.post(status_url, headers=headers, json=status_payload)
+
+        if status_response.status_code != 200:
+            print(f"Status check failed: {status_response.text}")
+            continue
+
+        status_json = status_response.json()
+        status = status_json['body']['status']
+        if status == "active":
+            image_url = status_json['body']['output']
+            return image_url
+        
+        elif status == "failed":
+            print("Image generation failed.")
+            return None
+
+    print("Image generation timed out.")
+    return None
+
+def save_image_from_url(image_url, file_name):
+    """
+    Download and save an image from a URL to a local file as a PNG.
+
+    Args:
+        image_url (str): The URL of the image.
+        file_name (str): The name of the file to save the image as (without extension).
+
+    Returns:
+        str: The file name if successful, None otherwise.
+    """
+    try:
+        response = requests.get(image_url)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+
+        # Save the file with a .png extension
+        png_file_name = f"{file_name}.png"
+        with open(png_file_name, 'wb') as file:
+            file.write(response.content)
+        
+        return png_file_name  # Return the file name for further use
+    except requests.RequestException as e:
+        print(f"Failed to download image: {e}")
+        return None
+    except Exception as e:
+        print(f"Error saving image: {e}")
+        return None
+
+
+
+def display_image(file_name):
+    """
+    Open and display an image using Pillow.
+
+    Args:
+        file_name (str): The path to the image file.
+    """
+    try:
+        img = Image.open(file_name)
+        img.show()  # Opens the image in the default image viewer
+        
+    except Exception as e:
+        print(f"Error displaying image: {e}")
 
 def main():
         
@@ -364,6 +460,18 @@ def main():
         print(f"It's name is '{show1['name']}' and it is about {show1['description']}.")
         print(f"Show #2 is based on the shows that I recommended for you.")
         print(f"It's name is '{show2['name']}' and it is about {show2['description']}.")
+        print("Here are also the 2 tv show ads. Hope you like them!")
+
+        try:
+            generated_url1 = generate_lightx_image(show1['description'], LIGHTX_API_KEY)
+            generated_url2 = generate_lightx_image(show2['description'], LIGHTX_API_KEY)
+            file_name1 = save_image_from_url(generated_url1, show1['name'])
+            file_name2 = save_image_from_url(generated_url2, show2['name'])
+            display_image(file_name1)
+            display_image(file_name2)
+
+        except Exception as e:
+            print(f"Error: {e}")
 
 
 
