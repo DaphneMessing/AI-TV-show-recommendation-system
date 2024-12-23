@@ -12,8 +12,6 @@ import requests
 from PIL import Image
 import time
 
-
-
 # Load API key from .env file
 load_dotenv()
 client = OpenAI(
@@ -49,6 +47,7 @@ def generate_embeddings(genres_with_descriptions, model="text-embedding-ada-002"
         except Exception as e:
             print(f"Error generating embedding for {title}: {e}")
     return embeddings
+
 
 def save_embeddings_to_pickle(embeddings, file_path):
     """Save embeddings dictionary to a pickle file."""
@@ -90,9 +89,8 @@ def match_shows(user_shows, available_shows, threshold=80):
     return True, matched_shows
 
 
-def get_embedding_vectors_and_calc_average_vector(tv_shows,embeddings):
+def calc_average_vector(tv_shows,embeddings):
     """
-    Load embedding vectors from the pickle file for the given TV show titles.
     Calculate the average embedding vector for the given TV show titles.
 
     Args:
@@ -102,9 +100,6 @@ def get_embedding_vectors_and_calc_average_vector(tv_shows,embeddings):
         np.ndarray: The average embedding vector as a NumPy array.
                     Returns None if no valid embeddings are found.
     """
-    # Load embeddings from the pickle file
-    # embeddings = load_embeddings_from_pickle(PICKLE_FILE)
-
     # Collect the embedding vectors for the given titles
     vectors = []
     for title in tv_shows:
@@ -154,6 +149,7 @@ def find_similar_shows(embeddings, average_vector, input_shows):
     top_5_shows = similarities[:5]
     
     return top_5_shows
+
 
 def build_index(embeddings):
     """
@@ -211,8 +207,6 @@ def find_similar_shows_fast(embeddings, average_vector, input_shows, k=5):
                 break
 
     return results
-
-
 
 
 def generate_new_shows(matched_shows, similar_shows, data):
@@ -300,7 +294,6 @@ def generate_new_shows(matched_shows, similar_shows, data):
         return None, None
     
     
-
 def generate_lightx_image(title, description, api_key):
     """
     Generate an image using the LightX image generator API.
@@ -357,6 +350,7 @@ def generate_lightx_image(title, description, api_key):
     print("Image generation timed out.")
     return None
 
+
 def save_image_from_url(image_url, file_name):
     """
     Download and save an image from a URL to a local file as a PNG.
@@ -386,7 +380,6 @@ def save_image_from_url(image_url, file_name):
         return None
 
 
-
 def display_image(file_name):
     """
     Open and display an image using Pillow.
@@ -401,95 +394,88 @@ def display_image(file_name):
     except Exception as e:
         print(f"Error displaying image: {e}")
 
-def main():
-        
-    # Check if embeddings pickle file exists
+
+def load_or_generate_embeddings():
+    """Load embeddings from a file or generate them from the CSV."""
     if os.path.exists(PICKLE_FILE):
-        print("Loading embeddings from pickle file...")
-        embeddings = load_embeddings_from_pickle(PICKLE_FILE)
-    else:
-        print("Generating embeddings from CSV file...")
-        # Load TV show descriptions from CSV
-        data = pd.read_csv(CSV_FILE)
-        genres_with_descriptions = dict(
-            zip(
-                data["Title"],
-                data["Genres"]+ ". " +data["Description"]
-                )
-            )
-        
-        # Generate embeddings
-        embeddings = generate_embeddings(genres_with_descriptions)
-        
-        # Save embeddings to a pickle file
-        save_embeddings_to_pickle(embeddings, PICKLE_FILE)
-        print("Embeddings saved to pickle file.")
+        #print("Loading embeddings from pickle file...")
+        return load_embeddings_from_pickle(PICKLE_FILE)
     
-    # Example usage of embeddings
-    print(f"Loaded embeddings for {len(embeddings)} TV shows.")
-
-     # Load TV show data from CSV
+    #print("Generating embeddings from CSV file...")
     data = pd.read_csv(CSV_FILE)
-    available_shows = data["Title"].tolist()  # List of available TV show titles
-    matched_shows=[]
+    genres_with_descriptions = dict(zip(data["Title"], data["Genres"] + ". " + data["Description"]))
+    embeddings = generate_embeddings(genres_with_descriptions)
+    save_embeddings_to_pickle(embeddings, PICKLE_FILE)
+    #print("Embeddings saved to pickle file.")
+    return embeddings
 
+
+def get_user_matched_shows(available_shows):
+    """Prompt the user for shows and match them using fuzzy matching."""
     while True:
-        # Prompt user for input
-        user_input = input("Which TV shows did you really like watching? Separate them by a comma. Make sure to enter more than 1 show: ")
+        user_input = input("\nWhich TV shows did you really like watching? Separate them by a comma. Make sure to enter more than 1 show: ")
         user_shows = [show.strip() for show in user_input.split(",")]
 
-        # Validate input length
         if len(user_shows) < 2:
-            print("Please enter more than 1 show.")
+            print("\nPlease enter more than 1 show.\n")
             continue
 
-        # Match shows using fuzzy matching
         is_match, matched_shows = match_shows(user_shows, available_shows)
-        
         if is_match:
-            res= ', '.join(matched_shows)
-            user_input=input(f"Making sure, do you mean {res}?(y/n)")
-            if user_input == "y":
-                print("Great! Generating recommendations now…")
-                break
+            res = ', '.join(matched_shows)
+            confirmation = input(f"\nMaking sure, do you mean {res}?(y/n): ")
+            if confirmation.lower() == "y":
+                print("\nGreat! Generating recommendations now…\n")
+                return matched_shows
         
-        print("Sorry about that. Let's try again, please make sure to write the names of the TV shows correctly.")
+        print("\norry about that. Let's try again, please make sure to write the names of the TV shows correctly.\n")
 
-    average_vector= get_embedding_vectors_and_calc_average_vector(matched_shows,embeddings)
+
+def display_recommendations(similar_shows):
+    """Print the list of recommended TV shows."""
+    print("\nHere are the TV shows that I think you would love:\n")
+    for title, percentage in similar_shows:
+        print(f"{title}: {int(round(percentage))}% ")
+
+
+def generate_and_display_new_shows(matched_shows, similar_shows, data):
+    """Generate new shows and display their details."""
+    show1, show2 = generate_new_shows(matched_shows, similar_shows, data)
+    if not show1 or not show2:
+        print("Error generating new shows.")
+        return
+
+    print("\nI have also created just for you two shows which I think you would love.\n")
+    print(f"Show #1: '{show1['name']}' - {show1['description']}")
+    print(f"Show #2: '{show2['name']}' - {show2['description']}")
+    print("\nHere are also the 2 TV show ads. Hope you like them!\n")
+
+    try:
+        generated_url1 = generate_lightx_image(show1['name'], show1['description'], LIGHTX_API_KEY)
+        generated_url2 = generate_lightx_image(show2['name'], show2['description'], LIGHTX_API_KEY)
+        file_name1 = save_image_from_url(generated_url1, show1['name'])
+        file_name2 = save_image_from_url(generated_url2, show2['name'])
+        display_image(file_name1)
+        display_image(file_name2)
+    except Exception as e:
+        print(f"Error displaying images: {e}")
+
+
+def main():
+    embeddings = load_or_generate_embeddings()
+    data = pd.read_csv(CSV_FILE)
+    available_shows = data["Title"].tolist()
+
+    matched_shows = get_user_matched_shows(available_shows)
+    average_vector = calc_average_vector(matched_shows, embeddings)
 
     if average_vector is None:
         print("Error: Unable to calculate average vector.")
         return
 
-    similar_shows= find_similar_shows_fast(embeddings, average_vector, matched_shows)    
-    print("\nHere are the tv shows that I think you would love:")
-    for title, percentage in similar_shows:
-        print(f"{title}: {int(round(percentage))}% ")
-
-
-    # Generate new shows using OpenAI
-    show1, show2 = generate_new_shows(matched_shows, similar_shows, data)
-
-    if show1 and show2:
-        print("\nI have also created just for you two shows which I think you would love.")
-        print(f"Show #1 is based on the fact that you loved the input shows that you gave me.")
-        print(f"It's name is '{show1['name']}' and it is about {show1['description']}.")
-        print(f"Show #2 is based on the shows that I recommended for you.")
-        print(f"It's name is '{show2['name']}' and it is about {show2['description']}.")
-        print("Here are also the 2 tv show ads. Hope you like them!")
-
-        try:
-            generated_url1 = generate_lightx_image(show1['name'], show1['description'], LIGHTX_API_KEY)
-            generated_url2 = generate_lightx_image(show2['name'], show2['description'], LIGHTX_API_KEY)
-            file_name1 = save_image_from_url(generated_url1, show1['name'])
-            file_name2 = save_image_from_url(generated_url2, show2['name'])
-            display_image(file_name1)
-            display_image(file_name2)
-
-        except Exception as e:
-            print(f"Error: {e}")
-
-
+    similar_shows = find_similar_shows_fast(embeddings, average_vector, matched_shows)
+    display_recommendations(similar_shows)
+    generate_and_display_new_shows(matched_shows, similar_shows, data)
 
 if __name__ == "__main__":
     main()
