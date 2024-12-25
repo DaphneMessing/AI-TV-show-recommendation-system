@@ -11,6 +11,8 @@ import json
 import requests
 from PIL import Image
 import time
+import matplotlib.pyplot as plt
+from io import BytesIO
 
 # Load API key from .env file
 load_dotenv()
@@ -351,6 +353,7 @@ def generate_lightx_image(title, description, api_key):
     return None
 
 
+
 def save_image_from_url(image_url, file_name):
     """
     Download and save an image from a URL to a local file as a PNG.
@@ -378,21 +381,26 @@ def save_image_from_url(image_url, file_name):
     except Exception as e:
         print(f"Error saving image: {e}")
         return None
+    
 
 
 def display_image(file_name):
     """
-    Open and display an image using Pillow.
+    Open and display an image using Matplotlib.
 
     Args:
         file_name (str): The path to the image file.
     """
     try:
         img = Image.open(file_name)
-        img.show()  # Opens the image in the default image viewer
-        
+        plt.figure()  # Create a new figure for each image
+        plt.imshow(img)
+        plt.axis('off')  # Turn off axes
+        plt.title(file_name)  # Optional: Add a title
+        plt.show()
     except Exception as e:
-        print(f"Error displaying image: {e}")
+        print(f"Error displaying image12: {e}")
+
 
 
 def load_or_generate_embeddings():
@@ -413,7 +421,7 @@ def load_or_generate_embeddings():
 def get_user_matched_shows(available_shows):
     """Prompt the user for shows and match them using fuzzy matching."""
     while True:
-        user_input = input("\nWhich TV shows did you really like watching? Separate them by a comma. Make sure to enter more than 1 show: ")
+        user_input = input("Which TV shows did you really like watching? Separate them by a comma. Make sure to enter more than 1 show: ")
         user_shows = [show.strip() for show in user_input.split(",")]
 
         if len(user_shows) < 2:
@@ -453,15 +461,32 @@ def generate_and_display_new_shows(matched_shows, similar_shows, data):
     try:
         generated_url1 = generate_lightx_image(show1['name'], show1['description'], LIGHTX_API_KEY)
         generated_url2 = generate_lightx_image(show2['name'], show2['description'], LIGHTX_API_KEY)
+        
+        if not generated_url1 or not generated_url2:
+            print("Error: Image URL generation failed for one or both shows.")
+            return
+        
+        
         file_name1 = save_image_from_url(generated_url1, show1['name'])
         file_name2 = save_image_from_url(generated_url2, show2['name'])
-        display_image(file_name1)
-        display_image(file_name2)
+
+
+        if file_name1 and file_name2:
+            display_image(file_name1)
+            display_image(file_name2)
+        else:
+            print("Error: Saving one or both images failed.")    
+
     except Exception as e:
         print(f"Error displaying images: {e}")
 
 
 def main():
+
+    print("\n" + "*" * 40)
+    print("  Welcome to AI TV SHOW SUGGESTER!")
+    print("*" * 40 + "\n")
+
     embeddings = load_or_generate_embeddings()
     data = pd.read_csv(CSV_FILE)
     available_shows = data["Title"].tolist()
@@ -476,6 +501,7 @@ def main():
     similar_shows = find_similar_shows_fast(embeddings, average_vector, matched_shows)
     display_recommendations(similar_shows)
     generate_and_display_new_shows(matched_shows, similar_shows, data)
+
 
 if __name__ == "__main__":
     main()
